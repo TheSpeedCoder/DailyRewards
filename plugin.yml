@@ -1,0 +1,23 @@
+name: DailyRewards
+version: 1.1.0
+author: FrozenLegend
+
+main: net.frozendev.dailyrewards.DailyRewards
+
+commands:
+    dailyrewards:
+        description: Open daily rewards inventory
+        aliases: [dailyr, drewards, dr]
+        permission: dailyrewards.open
+        usage: Syntax error! Simply type /<command>
+
+permissions:
+    dailyrewards.*:
+        description: Give full access to dailyrewards
+        children:
+            dailyrewards.open: true
+            dailyrewards.take: true
+    dailyrewards.open:
+        description: Allow player to open reward gui
+    dailyrewards.take:
+        description: Allow player to take reward in gui

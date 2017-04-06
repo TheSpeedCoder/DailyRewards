@@ -1,0 +1,59 @@
+options:
+    resetat7: false # Reset to day 1 when player reach 7 day
+    openlogin: true # Open GUI on login
+
+rewards:
+    day1:
+        name: Day 1 # Name of the reward
+        reward:
+            money: 50 # Money you want to give
+            commands:
+                - Set you in gamemode 1:gamemode 1 %PLAYER%
+            items: # Items you want to give (format : - ITEM:AMOUNT)
+                - DIAMOND
+    day2:
+        name: Day 2
+        reward:
+            money: 100
+            commands:
+                - Set you in gamemode 1:gamemode 1 %PLAYER%
+            items:
+                - DIAMOND:3
+    day3:
+        name: Day 3
+        reward:
+            money: 150
+            commands:
+                - Set you in gamemode 1:gamemode 1 %PLAYER%
+            items:
+    day4:
+        name: Day 4
+        reward:
+            money: 0
+            commands:
+                - Set you in gamemode 1:gamemode 1 %PLAYER%
+            items:
+                - DIAMOND:5
+    day5:
+        name: Day 5
+        reward:
+            money: 300
+            commands:
+                - Set you in gamemode 1:gamemode 1 %PLAYER%
+            items:
+                - DIAMOND:10
+    day6:
+        name: Day 6
+        reward:
+            money: 400
+            commands:
+                - Set you in gamemode 1:gamemode 1 %PLAYER%
+            items:
+    day7:
+        name: Day 7
+        reward:
+            money: 0
+            commands:
+                - Set you in gamemode 1:gamemode 1 %PLAYER%
+            items:
+                - DIAMOND:20
