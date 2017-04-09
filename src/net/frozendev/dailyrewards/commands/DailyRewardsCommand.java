@@ -9,13 +9,13 @@ import net.frozendev.dailyrewards.data.GlobalData;
 
 public class DailyRewardsCommand implements CommandExecutor {
 
-    @Override
-    public boolean onCommand(CommandSender cs, Command cmnd, String string, String[] strings) {
-        if (cs instanceof Player) {
-        	Player p = (Player)cs;
-        	GlobalData.PLAYERS.get(p.getUniqueId()).openInventory();
-        }
-        return true;
-    }
-    
+	@Override
+	public boolean onCommand(CommandSender cs, Command cmd, String str, String[] args) {
+		if (cs instanceof Player) {
+			Player p = (Player) cs;
+			GlobalData.PLAYERS.get(p.getUniqueId()).openGUI();
+		}
+		return true;
+	}
+
 }

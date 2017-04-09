@@ -1,5 +1,5 @@
 name: DailyRewards
-version: 1.1.0
+version: 1.3.2
 author: FrozenLegend
 
 main: net.frozendev.dailyrewards.DailyRewards
@@ -9,6 +9,10 @@ commands:
         description: Open daily rewards inventory
         aliases: [dailyr, drewards, dr]
         permission: dailyrewards.open
+        usage: Syntax error! Simply type /<command>
+    dailydebug:
+        description: Debug mode
+        default: op
         usage: Syntax error! Simply type /<command>
 
 permissions:

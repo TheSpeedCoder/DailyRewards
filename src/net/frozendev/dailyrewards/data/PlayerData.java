@@ -1,210 +1,327 @@
 package net.frozendev.dailyrewards.data;
 
-import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import net.frozendev.dailyrewards.DailyRewards;
-import net.frozendev.dailyrewards.utils.InvUtils;
+import net.frozendev.dailyrewards.files.ConfigurationReader;
+import net.frozendev.dailyrewards.files.StorageFile;
+import net.frozendev.dailyrewards.utils.GlobalUtils;
 import net.frozendev.dailyrewards.utils.StringUtils;
 import net.md_5.bungee.api.ChatColor;
 
 public class PlayerData {
 
+	/**
+	 * Player UUID
+	 */
 	private UUID uuid;
+
+	/**
+	 * Player object
+	 */
 	private Player player;
 
-	private boolean canTakeReward;
-	private int day;
+	/**
+	 * Boolean for easily manage if player can get his reward
+	 */
+	private boolean rewardAllowed;
 
-	private Date lastDate;
-	private Date nextDate;
+	/**
+	 * Current player rewardDay
+	 */
+	private int rewardDay;
 
-	private Inventory inv;
+	/**
+	 * Next reward available time
+	 */
+	private long nextRewardTime;
 
-	public PlayerData(UUID uuid, int day, boolean canTakeReward, Date lastDate, Date nextDate) {
+	/**
+	 * Last reward time
+	 */
+	private long lastRewardTime;
+
+	/**
+	 * GUI inventory
+	 */
+	private Inventory gui;
+
+	/**
+	 * Constructor for existing player
+	 * 
+	 * @param uuid
+	 * @param rewardAllowed
+	 * @param rewardDay
+	 * @param nextRewardTime
+	 * @param lastRewardTime
+	 */
+	public PlayerData(UUID uuid, boolean rewardAllowed, int rewardDay, long nextRewardTime, long lastRewardTime) {
 		this.uuid = uuid;
 		this.player = Bukkit.getPlayer(uuid);
-		this.day = day;
-		this.lastDate = lastDate;
-		this.nextDate = nextDate;
-		this.canTakeReward = canTakeReward;
-		this.inv = Bukkit.createInventory(player, 9, ChatColor.DARK_RED + ChatColor.BOLD.toString() + "Daily Rewards");
-		setupInventory();
+		this.rewardAllowed = rewardAllowed;
+		this.rewardDay = rewardDay;
+		this.nextRewardTime = nextRewardTime;
+		this.lastRewardTime = lastRewardTime;
+		this.gui = Bukkit.createInventory(player, 9, StringUtils.messageConfigColorParsed("gui-title"));
+		setupGUI();
 	}
 
-	public void setupInventory() {
-		InvUtils.setInventoryContents(inv, day);
+	/**
+	 * Constructor for new player
+	 * 
+	 * @param uuid
+	 */
+	public PlayerData(UUID uuid) {
+		this.uuid = uuid;
+		this.player = Bukkit.getPlayer(uuid);
+		this.rewardAllowed = true;
+		this.rewardDay = 1;
+		this.nextRewardTime = new Date().getTime();
+		this.lastRewardTime = new Date().getTime();
+		this.gui = Bukkit.createInventory(player, 9, "Daily Rewards");
+		setupGUI();
 	}
 
-	public void openInventory() {
-		player.openInventory(inv);
+	/**
+	 * Setup the GUI with correct items
+	 */
+	public void setupGUI() {
+		GlobalUtils.setGUIContents(gui, rewardDay);
 	}
 
+	/**
+	 * Open the gui
+	 */
+	public void openGUI() {
+		player.openInventory(gui);
+	}
+
+	/**
+	 * Send all rewards to player
+	 */
 	public void giveReward() {
-		List<String> rewards = GlobalData.DAY_REWARDS.get(day).getRewards();
-		double money = 0;
-		List<ItemStack> items = new ArrayList<>();
+		DayData dayData = GlobalData.DAY_REWARDS.get(rewardDay);
+		double money = dayData.getMoney();
+		List<ItemStack> items = dayData.getItems();
+		HashMap<String, String> commands = dayData.getCommands();
 
-		for (String str : rewards) {
-			String[] splited = null;
-			if (str.contains(":"))
-				splited = str.split(":");
-			if (str.contains("money")) {
-				if (splited != null)
-					money = Double.parseDouble(splited[1]);
-			}
-			if (str.contains("item")) {
-				if (splited != null) {
-					String item = splited[1];
-					int amount = Integer.parseInt(splited[2]);
-					items.add(new ItemStack(Material.getMaterial(item), amount));
-				}
-			}
-			if (str.contains("command")) {
-				if (splited != null) {
-					String cmd = splited[2];
-					Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), StringUtils.parsePlayer(cmd, player));
-				}
+		if (money > 0)
+			DailyRewards.getVault().getEconomy().depositPlayer(player, money);
+
+		if (items.size() > 0) {
+			for (ItemStack item : items) {
+				player.getInventory().addItem(item);
 			}
 		}
 
-		DailyRewards.getVault().getEconomy().depositPlayer(player, money);
-		for (ItemStack item : items)
-			player.getInventory().addItem(item);
-
-		canTakeReward = false;
-		sendMessage();
-
-		if (DailyRewards.getPlugin().getConfig().getBoolean("options.resetat7")) {
-			if (day == 7)
-				day = 1;
+		if (commands.size() > 0) {
+			for (String cmd : commands.keySet()) {
+				DailyRewards.getPlugin().getServer()
+						.dispatchCommand(DailyRewards.getPlugin().getServer().getConsoleSender(), cmd);
+			}
+		}
+		
+		rewardAllowed = false;
+		
+		lastRewardTime = new Date().getTime();
+		nextRewardTime = lastRewardTime + (1000 * 60 * 60 * 24);
+		
+		sendRewardMessage();
+		
+		if (ConfigurationReader.resetAt7Day()) {
+			if (rewardDay == 7)
+				rewardDay = 1;
 			else
-				day++;
+				rewardDay++;
 		} else {
-			if (day < 7)
-				day++;
+			if (rewardDay < 7)
+				rewardDay++;
 		}
-
-		updateDate();
 	}
 
-	public boolean canTakeReward() {
-		return canTakeReward;
+	/**
+	 * Send the reward message to the player
+	 */
+	private void sendRewardMessage() {
+		
+		if (!ConfigurationReader.customMessage()) {
+			DayData dayData = GlobalData.DAY_REWARDS.get(rewardDay);
+			double money = dayData.getMoney();
+			List<ItemStack> items = dayData.getItems();
+			HashMap<String, String> commands = dayData.getCommands();
+			
+			player.sendMessage("-------------------");
+			player.sendMessage("     " + ChatColor.DARK_GREEN + "DAILY REWARDS");
+			player.sendMessage("          " + ChatColor.DARK_GREEN + "Day : " + ChatColor.GREEN + dayData.getDay());
+			player.sendMessage("-------------------");
+			player.sendMessage(" ");
+			player.sendMessage(ChatColor.GREEN + "You received :");
+
+			if (money > 0)
+				player.sendMessage(ChatColor.GREEN + "- " + ChatColor.WHITE + money + ChatColor.GREEN + "$");
+
+			if (items.size() > 0) {
+				for (ItemStack item : items) {
+					player.sendMessage(
+							StringUtils.parseItemForMessage(item.getType().name(), item.getAmount()));
+				}
+			}
+
+			if (commands.size() > 0) {
+				for (String cmd : commands.values()) {
+					player.sendMessage(StringUtils.parseCommandForMessage(cmd));
+				}
+			}
+		} else {
+			List<String> messages = DailyRewards.getFileManager().getMessageFile().getFileConfiguration()
+					.getStringList("messages.day" + rewardDay);
+			for (String msg : messages) {
+				player.sendMessage(StringUtils.parseColor(msg));
+			}
+		}
 	}
 
-	public int getDay() {
-		return day;
+	/**
+	 * Check if the current date is superior or equal to the next date if yes
+	 * the player can take is reward so we put rewardAllowed to true
+	 */
+	public void updateRewardAllowed() {
+		if (nextRewardTime != 0) {
+			if (new Date().getTime() >= nextRewardTime) {
+				rewardAllowed = true;
+			}
+		}
 	}
 
-	public Date getLastDate() {
-		return lastDate;
+	/**
+	 * Check if the current date is superior or equal to the next date + 1 day
+	 * if yes the rewardDay is set to 1
+	 */
+	public void updateDay() {
+		if (nextRewardTime != 0) {
+			if (new Date().getTime() >= (nextRewardTime + (1000 * 60 * 60 * 24))) {
+				rewardDay = 1;
+			}
+		}
 	}
 
-	public Date getNextDate() {
-		return nextDate;
+	/**
+	 * Save all player data to the storage.yml file
+	 */
+	public void saveData() {
+		StorageFile storageFile = DailyRewards.getFileManager().getStorageFile();
+		storageFile.getFileConfiguration().set(uuid + ".reward-day", rewardDay);
+		storageFile.getFileConfiguration().set(uuid + ".reward-allowed", rewardAllowed);
+		storageFile.getFileConfiguration().set(uuid + ".next-reward-time", nextRewardTime);
+		storageFile.getFileConfiguration().set(uuid + ".last-reward-time", lastRewardTime);
+		storageFile.save();
 	}
 
+	/**
+	 * Get player UUID
+	 * 
+	 * @return player uuid
+	 */
+	public UUID getUUID() {
+		return uuid;
+	}
+
+	/**
+	 * Get player instance
+	 * 
+	 * @return player instance
+	 */
 	public Player getPlayer() {
 		return player;
 	}
 
-	public UUID getUUID() {
-		return this.uuid;
+	/**
+	 * Get player rewardAllowed
+	 * 
+	 * @return reward allowed
+	 */
+	public boolean rewardAllowed() {
+		return rewardAllowed;
 	}
 
-	public Inventory getInventory() {
-		return inv;
+	/**
+	 * Get player current reward day
+	 * 
+	 * @return player reward day
+	 */
+	public int getRewardDay() {
+		return rewardDay;
 	}
 
-	public void setCanTakeReward(boolean value) {
-		canTakeReward = value;
+	/**
+	 * Get player next reward time
+	 * 
+	 * @return next reward time
+	 */
+	public long getNextRewardTime() {
+		return nextRewardTime;
 	}
 
-	public void setDay(int day) {
-		this.day = day;
+	/**
+	 * Get player last reward time
+	 * 
+	 * @return last reward time
+	 */
+	public long getLastRewardTime() {
+		return lastRewardTime;
 	}
 
-	public void setNextDate(Date date) {
-		nextDate = date;
+	/**
+	 * Get player GUI personnal inventory
+	 * 
+	 * @return player GUI personnal inventory
+	 */
+	public Inventory getGUI() {
+		return gui;
 	}
 
-	public void setLastDate(Date date) {
-		lastDate = date;
+	/**
+	 * Set nextRewardTime to the selected value
+	 * 
+	 * @param nextRewardTime
+	 */
+	public void setNextRewardTime(long nextRewardTime) {
+		this.nextRewardTime = nextRewardTime;
 	}
 
-	private void sendMessage() {
-		FileConfiguration config = DailyRewards.getPlugin().getConfig();
-		int money = config.getInt("rewards.day" + day + ".reward.money");
-		List<String> materials = (List<String>) config.getStringList("rewards.day" + day + ".reward.items");
-		List<String> commands = (List<String>) config.getStringList("rewards.day" + day + ".reward.commands");
-		player.sendMessage("-------------------");
-		player.sendMessage("     " + ChatColor.DARK_GREEN + "DAILY REWARDS");
-		player.sendMessage("          " + ChatColor.DARK_GREEN + "Day : " + ChatColor.GREEN + day);
-		player.sendMessage("-------------------");
-		player.sendMessage(" ");
-		player.sendMessage(ChatColor.GREEN + "You received :");
-		if (money > 0)
-			player.sendMessage(ChatColor.GREEN + "- " + ChatColor.WHITE + money + ChatColor.GREEN + "$");
-
-		if (materials.size() > 0) {
-			for (String mat : materials) {
-				player.sendMessage(StringUtils.parseMaterialForMessage(mat));
-			}
-		}
-		
-		if (commands.size() > 0) {
-			for (String cmd : commands) {
-				player.sendMessage(StringUtils.parseCommandForMessage(cmd));
-			}
-		}
+	/**
+	 * Set lastRewardTime to the selected value
+	 * 
+	 * @param lastRewardTime
+	 */
+	public void setLastRewardTime(long lastRewardTime) {
+		this.lastRewardTime = lastRewardTime;
 	}
 
-	public void updateCanTakeReward() {
-		if (nextDate != null) {
-			if (new Date().after(nextDate)) {
-				canTakeReward = true;
-			}
-		}
+	/**
+	 * Set rewardDay to the selected value
+	 * 
+	 * @param rewardDay
+	 */
+	public void setRewardDay(int rewardDay) {
+		this.rewardDay = rewardDay;
 	}
 
-	public void updateDay() {
-		if (nextDate != null) {
-			if (new Date(nextDate.getTime() + (1000 * 60 * 60 * 24)).before(new Date())) {
-				day = 1;
-			}
-		}
-	}
-
-	public void save() {
-		FileConfiguration STORAGE = DailyRewards.getStorage().getFileConfiguration();
-
-		if (STORAGE.get(uuid.toString()) != null) {
-			STORAGE.set(uuid + ".day", day);
-			STORAGE.set(uuid + ".cantakereward", canTakeReward);
-			STORAGE.set(uuid + ".lastdate", lastDate);
-			STORAGE.set(uuid + ".nextdate", nextDate);
-		} else {
-			STORAGE.set(uuid.toString() + ".day", day);
-			STORAGE.set(uuid.toString() + ".cantakereward", canTakeReward);
-			STORAGE.set(uuid.toString() + ".lastdate", lastDate);
-			STORAGE.set(uuid.toString() + ".nextdate", nextDate);
-
-		}
-		DailyRewards.getStorage().save();
-	}
-
-	private void updateDate() {
-		lastDate = new Date();
-		nextDate = new Date(lastDate.getTime() + (1000 * 60 * 60 * 24));
+	/**
+	 * Set rewardAllowed to the selected value
+	 * 
+	 * @param rewardAllowed
+	 */
+	public void setRewardAllowed(boolean rewardAllowed) {
+		this.rewardAllowed = rewardAllowed;
 	}
 
 }

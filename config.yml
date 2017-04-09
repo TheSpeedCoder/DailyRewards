@@ -1,11 +1,13 @@
 options:
-    resetat7: false # Reset to day 1 when player reach 7 day
-    openlogin: true # Open GUI on login
+    reset-at-7: false # Reset to day 1 when player reach 7 day
+    open-on-login: true # Open GUI on login
+    custom-messages: false
 
 rewards:
     day1:
         name: Day 1 # Name of the reward
-        reward:
+        lore: "%REWARDS%" # Rewards will show all rewards in the lore
+        rewards:
             money: 50 # Money you want to give
             commands:
                 - Set you in gamemode 1:gamemode 1 %PLAYER%
@@ -13,7 +15,8 @@ rewards:
                 - DIAMOND
     day2:
         name: Day 2
-        reward:
+        lore: "%REWARDS%"
+        rewards:
             money: 100
             commands:
                 - Set you in gamemode 1:gamemode 1 %PLAYER%
@@ -21,14 +24,16 @@ rewards:
                 - DIAMOND:3
     day3:
         name: Day 3
-        reward:
+        lore: "%REWARDS%"
+        rewards:
             money: 150
             commands:
                 - Set you in gamemode 1:gamemode 1 %PLAYER%
             items:
     day4:
         name: Day 4
-        reward:
+        lore: "%REWARDS%"
+        rewards:
             money: 0
             commands:
                 - Set you in gamemode 1:gamemode 1 %PLAYER%
@@ -36,7 +41,8 @@ rewards:
                 - DIAMOND:5
     day5:
         name: Day 5
-        reward:
+        lore: "%REWARDS%"
+        rewards:
             money: 300
             commands:
                 - Set you in gamemode 1:gamemode 1 %PLAYER%
@@ -44,14 +50,16 @@ rewards:
                 - DIAMOND:10
     day6:
         name: Day 6
-        reward:
+        lore: "%REWARDS%"
+        rewards:
             money: 400
             commands:
                 - Set you in gamemode 1:gamemode 1 %PLAYER%
             items:
     day7:
         name: Day 7
-        reward:
+        lore: "%REWARDS%"
+        rewards:
             money: 0
             commands:
                 - Set you in gamemode 1:gamemode 1 %PLAYER%
